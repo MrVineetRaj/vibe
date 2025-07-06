@@ -2,7 +2,7 @@ import { z } from "zod";
 import { baseProcedure, createTRPCRouter } from "../init";
 import { inngest } from "@/inngest/client";
 export const appRouter = createTRPCRouter({
-  invoke: baseProcedure
+  invokeAgent: baseProcedure
     .input(
       z.object({
         value: z.string(),
@@ -10,7 +10,7 @@ export const appRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       await inngest.send({
-        name: "app/generate.code",
+        name: "app/code.agent",
         data: {
           value: input.value,
         },

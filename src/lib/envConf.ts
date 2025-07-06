@@ -9,8 +9,10 @@ const envSchema = z.object({
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
+  
   const validationResult = envSchema.safeParse(env);
 
+  console.log(validationResult.success ,"HERE_________________")
   if (!validationResult.success) {
     throw new Error(validationResult.error.message);
   }
@@ -20,4 +22,4 @@ function createEnv(env: NodeJS.ProcessEnv) {
 
 const env = createEnv(process.env);
 
-export { env };
+// export { env };

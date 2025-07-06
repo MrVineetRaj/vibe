@@ -10,10 +10,10 @@ const HomePage = () => {
   const [value, setValue] = useState<string>("");
 
   const trpc = useTRPC();
-  const invoke = useMutation(
-    trpc.invoke.mutationOptions({
+  const invokeAgent = useMutation(
+    trpc.invokeAgent.mutationOptions({
       onSuccess: () => {
-        toast.success("Function invoked");
+        toast.success("Agent invoked");
       },
     })
   );
@@ -35,11 +35,11 @@ const HomePage = () => {
         />
         <Button
           onClick={() => {
-            invoke.mutate({
+            invokeAgent.mutate({
               value: value,
             });
           }}
-          disabled={invoke.isPending}
+          disabled={invokeAgent.isPending}
         >
           Invoke Background
         </Button>
