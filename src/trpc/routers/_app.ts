@@ -10,9 +10,9 @@ export const appRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       await inngest.send({
-        name: "test/hello.world",
+        name: "app/generate.code",
         data: {
-          email: input.value,
+          value: input.value,
         },
       });
 
@@ -21,12 +21,12 @@ export const appRouter = createTRPCRouter({
   createAI: baseProcedure
     .input(
       z.object({
-        text: z.string(),
+        value: z.string(),
       })
     )
     .query((opts) => {
       return {
-        greeting: `hello ${opts.input.text}`,
+        greeting: `hello ${opts.input.value}`,
       };
     }),
 });
