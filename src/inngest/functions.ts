@@ -48,27 +48,31 @@ export const generateCode = inngest.createFunction(
             command: z.string(),
           }),
           handler: async ({ command }, { step }) => {
-            // return await step?.run("terminal", async () => {
             const buffers = { stdout: "", stderr: "" };
             try {
               const sandbox = await getSandbox(sandboxId);
-              const result = await sandbox.commands.run(command, {
-                onStdout: (data: string) => {
-                  buffers.stdout += data;
-                },
-                onStderr: (data: string) => {
-                  buffers.stderr += data;
-                },
-              });
+              const result = await step?.run(
+                "Running Terminal Command",
+                async () => {
+                  return await sandbox.commands.run(command, {
+                    onStdout: (data: string) => {
+                      buffers.stdout += data;
+                    },
+                    onStderr: (data: string) => {
+                      buffers.stderr += data;
+                    },
+                  });
+                }
+              );
+              if (result) return result.stdout;
 
-              return result.stdout;
+              return "Nothing here";
             } catch (err) {
               console.error(
                 `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`
               );
               return `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`;
             }
-            // });
           },
         }),
         createTool({
@@ -86,30 +90,30 @@ export const generateCode = inngest.createFunction(
             { files },
             { network, step }: Tool.Options<AgentState>
           ) => {
-            console.log("CMD is ", step);
-            // const { step, network } = cmd;
-            // const newFiles = await step?.run(
-            //   "creating-or-updating-files",
-            //   async () => {
             try {
-              const updatedFiles = network.state.data.files || {};
-              console.log("Running createOrUpdateFiles");
-              const sandbox = await getSandbox(sandboxId);
-              for (const file of files) {
-                await sandbox.files.write(file.path, file.content);
-                updatedFiles[file.path] = file.content;
-              }
-              // ADD THIS RETURN STATEMENT
+              const updatedFiles = await step?.run(
+                "Writing Files",
+                async () => {
+                  const updatedFiles = network.state.data.files || {};
 
-              if (typeof updatedFiles === "object") {
+                  const sandbox = await getSandbox(sandboxId);
+                  for (const file of files) {
+                    await sandbox.files.write(file.path, file.content);
+                    updatedFiles[file.path] = file.content;
+                  }
+
+                  return updatedFiles;
+                }
+              );
+
+              if (updatedFiles) {
                 network.state.data.files = updatedFiles;
               }
-              return updatedFiles;
+              
+              return "Files created/updated successfully";
             } catch (e) {
-              return "Error" + e;
+              return "Error: " + e;
             }
-            //   }
-            // );
           },
         }),
         createTool({
@@ -119,21 +123,20 @@ export const generateCode = inngest.createFunction(
             files: z.array(z.string()),
           }),
           handler: async ({ files }, { step }) => {
-            // return await step?.run("reading files", async () => {
             try {
-              const sandbox = await getSandbox(sandboxId);
-              console.log("Running readFiles");
-              let contents = [];
-              for (const file of files) {
-                const content = await sandbox.files.read(file);
-                contents.push({ path: file, content });
-              }
-
-              return JSON.stringify(contents);
+              await step?.run("Reading Files", async () => {
+                const sandbox = await getSandbox(sandboxId);
+                console.log("Running readFiles");
+                let contents = [];
+                for (const file of files) {
+                  const content = await sandbox.files.read(file);
+                  contents.push({ path: file, content });
+                }
+                return JSON.stringify(contents);
+              });
             } catch (err) {
               return "Error: " + err;
             }
-            // });
           },
         }),
       ],
@@ -170,7 +173,7 @@ export const generateCode = inngest.createFunction(
 
         if (summary) {
           console.log("Summary found, stopping network");
-          return; // This stops the network
+          return;
         }
 
         return codeAgent;
@@ -179,9 +182,9 @@ export const generateCode = inngest.createFunction(
 
     console.log("Starting network with input:", event.data.value);
 
-    const result = await step.run("run-network", async () => {
-      return await network.run(event.data.value);
-    });
+    // const result = await step.run("run-network", async () => {
+    const result = await network.run(event.data.value);
+    // });
 
     const isError =
       !result.state.data.summary ||

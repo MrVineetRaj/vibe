@@ -41,6 +41,7 @@ const HomePage = () => {
           onChange={(e) => {
             setValue(e.target.value);
           }}
+          name="user-prompt"
         />
         <Button
           onClick={() => {

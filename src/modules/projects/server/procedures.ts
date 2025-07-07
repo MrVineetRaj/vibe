@@ -27,7 +27,7 @@ export const projectsRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       try {
-        console.log(db);
+        // console.log(db);
         const createdProject = await db.project.create({
           data: {
             name: generateSlug(2, {
