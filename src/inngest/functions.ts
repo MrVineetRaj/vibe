@@ -5,11 +5,19 @@ import {
   createNetwork,
   createTool,
   openai,
+  type Tool,
 } from "@inngest/agent-kit";
 import { Sandbox } from "@e2b/code-interpreter";
 import { getSandbox, lastAssistantTextMessageContent } from "./uitls";
 import { PROMPT } from "@/constants/prompt";
-
+import { db } from "@/lib/prisma";
+import { MessageRole, MessageType } from "@/generated/prisma";
+interface AgentState {
+  summary: string;
+  files: {
+    [path: string]: string;
+  };
+}
 export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
@@ -21,7 +29,7 @@ export const generateCode = inngest.createFunction(
 
     // Create a new agent with a system prompt (you can add optional tools, too)
     // const result = await step.run("generating-code", async () => {
-    const codeAgent = createAgent({
+    const codeAgent = createAgent<AgentState>({
       name: "code-agent",
       description:
         "a senior software engineer working in a sandboxed Next.js 15.3.4 environment",
@@ -74,8 +82,9 @@ export const generateCode = inngest.createFunction(
               })
             ),
           }),
-          handler: async ({ files }, { network }) => {
-            // console.log("CMD is ", cmd);
+          handler: async ({ files }, { network,step }: Tool.Options<AgentState>) => {
+
+            console.log("CMD is ", step);
             // const { step, network } = cmd;
             // const newFiles = await step?.run(
             //   "creating-or-updating-files",
@@ -150,7 +159,7 @@ export const generateCode = inngest.createFunction(
 
     console.log("CodeAgentCompleted");
 
-    const network = createNetwork({
+    const network = createNetwork<AgentState>({
       name: "coding-agent-network",
       agents: [codeAgent],
       maxIter: 15,
@@ -172,10 +181,15 @@ export const generateCode = inngest.createFunction(
       return await network.run(event.data.value);
     });
 
+    const isError =
+      !result.state.data.summary ||
+      Object.keys(result.state.data.files || {}).length === 0;
+
     console.log("Network completed with result:", {
       hasFiles: !!result.state?.data?.files,
       hasSummary: !!result.state?.data?.summary,
     });
+
     // return result;
     // });
 
@@ -185,6 +199,31 @@ export const generateCode = inngest.createFunction(
       return `https://${host}`;
     });
 
+    await step.run("Saving Results", async () => {
+      if (isError) {
+        return await db.message.create({
+          data: {
+            content: "Something went wrong please try again later",
+            role: MessageRole.ASSISTANT,
+            type: MessageType.ERROR,
+          },
+        });
+      }
+      return await db.message.create({
+        data: {
+          content: result.state.data.summary,
+          role: MessageRole.ASSISTANT,
+          type: MessageType.RESULT,
+          fragment: {
+            create: {
+              sandboxUrl: sandboxURL,
+              title: "Fragment",
+              files: result.state.data.files,
+            },
+          },
+        },
+      });
+    });
     return {
       url: sandboxURL,
       title: "Fragment",

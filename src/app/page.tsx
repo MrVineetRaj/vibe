@@ -10,8 +10,9 @@ const HomePage = () => {
   const [value, setValue] = useState<string>("");
 
   const trpc = useTRPC();
-  const invokeAgent = useMutation(
-    trpc.invokeAgent.mutationOptions({
+  const { data: messages } = useQuery(trpc.message.getMany.queryOptions());
+  const createMessage = useMutation(
+    trpc.message.create.mutationOptions({
       onSuccess: () => {
         toast.success("Agent invoked");
       },
@@ -35,14 +36,17 @@ const HomePage = () => {
         />
         <Button
           onClick={() => {
-            invokeAgent.mutate({
+            createMessage.mutate({
               value: value,
             });
           }}
-          disabled={invokeAgent.isPending}
+          disabled={createMessage.isPending}
         >
           Invoke Background
         </Button>
+
+
+        {JSON.stringify(messages)}
       </form>
     </div>
   );
