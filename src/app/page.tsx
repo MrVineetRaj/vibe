@@ -3,27 +3,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/trpc/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { toast } from "sonner";
 
 const HomePage = () => {
-  const [value, setValue] = useState<string>("");
+  const router = useRouter();
 
+  const [value, setValue] = useState<string>("");
   const trpc = useTRPC();
-  const { data: messages } = useQuery(trpc.message.getMany.queryOptions());
-  const createMessage = useMutation(
-    trpc.message.create.mutationOptions({
-      onSuccess: () => {
-        toast.success("Agent invoked");
+  const { data: projects } = useQuery(trpc.projects.getMany.queryOptions());
+  const createProject = useMutation(
+    trpc.projects.create.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message);
+      },
+      onSuccess: (data) => {
+        if (!data || (data && !data.id)) toast.error("Something went wrong");
+        else {
+          router.push(`/projects/${data.id}`);
+        }
       },
     })
   );
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
+    <div className="h-screen w-screen flex items-center justify-center flex-col">
       <form
         action=""
-        className="flex flex-col gap-4"
+        className="max-w-7xl mx-auto flex items-center flex-col gap-y-4 justify-center"
         onSubmit={(e) => {
           e.preventDefault();
         }}
@@ -36,18 +44,25 @@ const HomePage = () => {
         />
         <Button
           onClick={() => {
-            createMessage.mutate({
+            createProject.mutate({
               value: value,
             });
           }}
-          disabled={createMessage.isPending}
+          disabled={createProject.isPending}
         >
-          Invoke Background
+          Create Project
         </Button>
-
-
-        {JSON.stringify(messages)}
       </form>
+
+      {projects &&
+        projects?.length > 0 &&
+        projects?.map((project, index) => {
+          return (
+            <div className="" key={project.id}>
+              {project?.name}
+            </div>
+          );
+        })}
     </div>
   );
 };

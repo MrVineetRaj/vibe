@@ -82,8 +82,10 @@ export const generateCode = inngest.createFunction(
               })
             ),
           }),
-          handler: async ({ files }, { network,step }: Tool.Options<AgentState>) => {
-
+          handler: async (
+            { files },
+            { network, step }: Tool.Options<AgentState>
+          ) => {
             console.log("CMD is ", step);
             // const { step, network } = cmd;
             // const newFiles = await step?.run(
@@ -206,6 +208,7 @@ export const generateCode = inngest.createFunction(
             content: "Something went wrong please try again later",
             role: MessageRole.ASSISTANT,
             type: MessageType.ERROR,
+            projectId: event.data.projectId,
           },
         });
       }
@@ -214,6 +217,7 @@ export const generateCode = inngest.createFunction(
           content: result.state.data.summary,
           role: MessageRole.ASSISTANT,
           type: MessageType.RESULT,
+          projectId: event.data.projectId,
           fragment: {
             create: {
               sandboxUrl: sandboxURL,
