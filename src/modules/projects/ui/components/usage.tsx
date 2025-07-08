@@ -51,7 +51,8 @@ export const CreditsInNavbar = () => {
 
   return (
     <span className="flex gap-2 items-center">
-      <CoinsIcon className="text-yellow-500" /> {usage?.remainingPoints} Coins
+      <CoinsIcon className="text-yellow-500" /> {usage?.remainingPoints || 10}{" "}
+      Coins
     </span>
   );
 };

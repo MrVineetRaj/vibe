@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { z } from "zod";
-import { toast } from "sonner";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,9 +17,9 @@ import { PROJECT_TEMPLATES } from "@/constants/project_templates";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { TRPCError } from "@trpc/server";
 
-interface Props {
-  projectId: string;
-}
+// interface Props {
+//   projectId: string;
+// }
 
 const formSchema = z.object({
   value: z

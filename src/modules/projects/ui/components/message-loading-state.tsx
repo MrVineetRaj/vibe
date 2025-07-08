@@ -22,7 +22,7 @@ const ShimmerMessages = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [messages]);
+  }, [messages.length]);
   return (
     <div className="flex items-center gap-2">
       <span className="text-base text-muted-foreground animate-pulse">

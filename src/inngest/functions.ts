@@ -5,6 +5,7 @@ import {
   createNetwork,
   createState,
   createTool,
+  gemini,
   type Message,
   openai,
   type Tool,
@@ -22,8 +23,6 @@ import {
 } from "@/constants/prompt";
 import { db } from "@/lib/prisma";
 import { MessageRole, MessageType } from "@/generated/prisma";
-import { timeStamp } from "node:console";
-import { auth } from "@clerk/nextjs/server";
 interface AgentState {
   summary: string;
   files: {
@@ -35,12 +34,13 @@ export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
   async ({ event, step }) => {
-    const { has } = await auth();
-
-    const isOnProPlan = has?.({ plan: "pro" });
+    const currentPlan = event.data.plan;
+    // console.log("IS user on pro plan");
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("vibe-sandbox-test-2");
-      await sandbox.setTimeout(isOnProPlan ? 1000 * 60 * 5 : 1000 * 60 * 2);
+      await sandbox.setTimeout(
+        currentPlan === "pro" ? 1000 * 60 * 10 : 1000 * 60 * 5
+      );
       return sandbox.sandboxId;
     });
 
@@ -56,7 +56,7 @@ export const generateCode = inngest.createFunction(
           orderBy: {
             createdAt: "desc",
           },
-          take:5
+          take: 5,
         });
 
         for (const message of messages) {
@@ -207,7 +207,7 @@ export const generateCode = inngest.createFunction(
               await step?.run("Reading Files", async () => {
                 const sandbox = await getSandbox(sandboxId);
                 console.log("Running readFiles");
-                let contents = [];
+                const contents = [];
                 for (const file of files) {
                   const content = await sandbox.files.read(file);
                   contents.push({ path: file, content });
@@ -268,16 +268,16 @@ export const generateCode = inngest.createFunction(
       name: "fragment-title-generator",
       description: "A fragment title generator",
       system: FRAGMENT_TITLE_PROMPT,
-      model: openai({
-        model: "gpt-4.1-mini",
+      model: gemini({
+        model: "gemini-2.0-flash",
       }),
     });
     const responseGenerator = createAgent({
       name: "response-generator",
       description: "A response generator",
       system: RESPONSE_PROMPT,
-      model: openai({
-        model: "gpt-4.1-mini",
+      model: gemini({
+        model: "gemini-2.0-flash",
       }),
     });
     // });
