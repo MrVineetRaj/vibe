@@ -7,6 +7,21 @@ import { inngest } from "@/inngest/client";
 import { generateSlug } from "random-word-slugs";
 
 export const projectsRouter = createTRPCRouter({
+  getOne: baseProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1, "Project Id is required"),
+      })
+    )
+    .query(async ({ input }) => {
+      const project = await db.project.findUnique({
+        where: {
+          id: input.projectId,
+        },
+      });
+
+      return project;
+    }),
   getMany: baseProcedure.query(async () => {
     const projects = await db.project.findMany({
       orderBy: {
