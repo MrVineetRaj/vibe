@@ -22,7 +22,6 @@ import {
 } from "@/constants/prompt";
 import { db } from "@/lib/prisma";
 import { MessageRole, MessageType } from "@/generated/prisma";
-import { timeStamp } from "node:console";
 import { auth } from "@clerk/nextjs/server";
 interface AgentState {
   summary: string;
@@ -207,7 +206,7 @@ export const generateCode = inngest.createFunction(
               await step?.run("Reading Files", async () => {
                 const sandbox = await getSandbox(sandboxId);
                 console.log("Running readFiles");
-                let contents = [];
+                const contents = [];
                 for (const file of files) {
                   const content = await sandbox.files.read(file);
                   contents.push({ path: file, content });

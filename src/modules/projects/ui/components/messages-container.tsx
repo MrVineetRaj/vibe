@@ -44,7 +44,7 @@ const MessagesContainer = ({
       setActiveFragment(lastAssistantMessage.fragment);
       lastAssistantMessageRef.current = lastAssistantMessage.id;
     }
-  }, [messages]);
+  }, [messages, setActiveFragment]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView();
