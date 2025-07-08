@@ -38,8 +38,6 @@ const Tree = ({ item, selectedValue, onSelect, parentPath }: TreeProps) => {
 
   if (!items.length) {
     const isSelected = selectedValue === currentPath;
-
-    console.log(name, items);
     return (
       <SidebarMenuButton
         isActive={isSelected}
