@@ -1,6 +1,6 @@
 "use client";
 
-import { act, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
 import { useTRPC } from "@/trpc/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import MessagesContainer from "../components/messages-container";
@@ -72,7 +72,7 @@ const ProjectView = ({ projectId }: Props) => {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="ml-wuto flex items-center gap-x-2">
+              <div className="ml-auto flex items-center gap-x-2">
                 <Button asChild size="sm" variant={"default"}>
                   <Link href={"/pricing"}>
                     <CrownIcon /> Upgrade
