@@ -5,6 +5,7 @@ import { db } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { inngest } from "@/inngest/client";
 import { TRPCError } from "@trpc/server";
+import { consumeCredits } from "@/lib/usage";
 
 export const messageRouter = createTRPCRouter({
   getMany: protectedProcedure
@@ -31,7 +32,7 @@ export const messageRouter = createTRPCRouter({
         return messages;
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error(error);
+          console.log(error);
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -65,6 +66,8 @@ export const messageRouter = createTRPCRouter({
           });
         }
 
+        await consumeCredits();
+
         await db.message.create({
           data: {
             content: input.value,
@@ -87,12 +90,20 @@ export const messageRouter = createTRPCRouter({
         return "Message created";
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error(error);
+          console.log(error);
         }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Something went wrong try again later",
-        });
+
+        if (error instanceof Error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Something went wrong try again later",
+          });
+        } else {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "You ran out of credits",
+          });
+        }
       }
     }),
 });

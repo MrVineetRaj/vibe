@@ -69,7 +69,7 @@ export const generateCode = inngest.createFunction(
 
               return "Nothing here";
             } catch (err) {
-              console.error(
+              console.log(
                 `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`
               );
               return `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`;

@@ -6,6 +6,7 @@ import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { inngest } from "@/inngest/client";
 import { generateSlug } from "random-word-slugs";
 import { TRPCError } from "@trpc/server";
+import { consumeCredits } from "@/lib/usage";
 
 export const projectsRouter = createTRPCRouter({
   getOne: protectedProcedure
@@ -15,31 +16,28 @@ export const projectsRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      try {
-        const project = await db.project.findUnique({
-          where: {
-            id: input.projectId,
-            userId: ctx.auth.userId,
-          },
-        });
+      // try {
+      const project = await db.project.findUnique({
+        where: {
+          id: input.projectId,
+          userId: ctx.auth.userId,
+        },
+      });
 
-        if (!project) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Project not found",
-          });
-        }
-
-        return project;
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error(error);
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Something went wrong try again later",
-        });
+      if (!project) {
+        return null;
       }
+
+      return project;
+      // } catch (error) {
+      //   if (process.env.NODE_ENV === "development") {
+      //     console.log(error);
+      //   }
+      //   throw new TRPCError({
+      //     code: "INTERNAL_SERVER_ERROR",
+      //     message: "Something went wrong try again later",
+      //   });
+      // }
     }),
   getMany: protectedProcedure.query(async ({ ctx }) => {
     try {
@@ -55,7 +53,7 @@ export const projectsRouter = createTRPCRouter({
       return projects;
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error(error);
+        console.log(error);
       }
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -74,7 +72,7 @@ export const projectsRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        console.log(ctx.auth.userId);
+        await consumeCredits();
         const createdProject = await db.project.create({
           data: {
             name: generateSlug(2, {
@@ -92,7 +90,6 @@ export const projectsRouter = createTRPCRouter({
           },
         });
 
-        
         await inngest.send({
           name: "app/code.agent",
           data: {
@@ -105,7 +102,7 @@ export const projectsRouter = createTRPCRouter({
         return { id: createdProject.id };
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error(error);
+          console.log(error);
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
