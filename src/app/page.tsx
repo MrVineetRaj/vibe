@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/trpc/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { toast } from "sonner";
@@ -59,9 +60,13 @@ const HomePage = () => {
         projects?.length > 0 &&
         projects?.map((project, index) => {
           return (
-            <div className="" key={project.id}>
+            <Link
+              href={`/projects/${project.id}`}
+              className=""
+              key={project.id}
+            >
               {project?.name}
-            </div>
+            </Link>
           );
         })}
     </div>
