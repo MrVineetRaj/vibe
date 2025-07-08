@@ -23,6 +23,7 @@ import {
 import { db } from "@/lib/prisma";
 import { MessageRole, MessageType } from "@/generated/prisma";
 import { timeStamp } from "node:console";
+import { auth } from "@clerk/nextjs/server";
 interface AgentState {
   summary: string;
   files: {
@@ -34,8 +35,12 @@ export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
   async ({ event, step }) => {
+    const { has } = await auth();
+
+    const isOnProPlan = has?.({ plan: "pro" });
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("vibe-sandbox-test-2");
+      await sandbox.setTimeout(isOnProPlan ? 1000 * 60 * 5 : 1000 * 60 * 2);
       return sandbox.sandboxId;
     });
 
@@ -49,8 +54,9 @@ export const generateCode = inngest.createFunction(
             projectId: event.data.projectId,
           },
           orderBy: {
-            createdAt: "asc",
+            createdAt: "desc",
           },
+          take:5
         });
 
         for (const message of messages) {

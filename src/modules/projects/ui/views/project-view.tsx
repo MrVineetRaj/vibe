@@ -22,6 +22,7 @@ import Link from "next/link";
 import FileExplorer from "@/components/file-explorer";
 import UserControl from "@/components/user-control";
 import { SignedIn, useAuth } from "@clerk/nextjs";
+import { CreditsInNavbar } from "../components/usage";
 
 interface Props {
   projectId: string;
@@ -87,8 +88,9 @@ const ProjectView = ({ projectId }: Props) => {
                   </TabsTrigger>
                 </TabsList>
 
-                <div className="ml-auto flex items-center gap-x-2">
-                  {!isOnFreePlan && (
+                <div className="ml-auto flex items-center gap-x-4">
+                  <CreditsInNavbar />
+                  {isOnFreePlan && (
                     <Button asChild size="sm" variant={"default"}>
                       <Link href={"/pricing"}>
                         <CrownIcon /> Upgrade
@@ -96,7 +98,7 @@ const ProjectView = ({ projectId }: Props) => {
                     </Button>
                   )}
                   <SignedIn>
-                    <UserControl />
+                    <UserControl  />
                   </SignedIn>
                 </div>
               </div>
