@@ -7,10 +7,11 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import UserControl from "@/components/user-control";
+import { CreditsInNavbar } from "@/modules/projects/ui/components/usage";
 
 const Navbar = () => {
   const isScrolled = useScroll(10);
-  
+
   return (
     <nav
       className={cn(
@@ -39,7 +40,10 @@ const Navbar = () => {
           </div>
         </SignedOut>
         <SignedIn>
-          <UserControl />
+          <span className="flex items-center gap-4">
+            <CreditsInNavbar />
+            <UserControl showName={true} />
+          </span>
         </SignedIn>
       </div>
     </nav>
