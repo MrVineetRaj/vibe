@@ -2,32 +2,44 @@ import { z } from "zod";
 
 import { MessageRole, MessageType } from "@/generated/prisma";
 import { db } from "@/lib/prisma";
-import { baseProcedure, createTRPCRouter } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { inngest } from "@/inngest/client";
+import { TRPCError } from "@trpc/server";
 
 export const messageRouter = createTRPCRouter({
-  getMany: baseProcedure
+  getMany: protectedProcedure
     .input(
       z.object({
         projectId: z.string().min(1, { message: "Project Id Required" }),
       })
     )
-    .query(async ({ input }) => {
-      const messages = await db.message.findMany({
-        where: {
-          projectId: input.projectId,
-        },
-        orderBy: {
-          updatedAt: "asc",
-        },
-        include: {
-          fragment: true,
-        },
-      });
+    .query(async ({ input, ctx }) => {
+      try {
+        const messages = await db.message.findMany({
+          where: {
+            projectId: input.projectId,
+            userId: ctx.auth.userId,
+          },
+          orderBy: {
+            updatedAt: "asc",
+          },
+          include: {
+            fragment: true,
+          },
+        });
 
-      return messages;
+        return messages;
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error(error);
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong try again later",
+        });
+      }
     }),
-  create: baseProcedure
+  create: protectedProcedure
     .input(
       z.object({
         value: z
@@ -37,27 +49,50 @@ export const messageRouter = createTRPCRouter({
         projectId: z.string().min(1, { message: "Project Id Required" }),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log("Hello");
+        const existingProject = await db.project.findUnique({
+          where: {
+            id: input.projectId,
+            userId: ctx.auth.userId,
+          },
+        });
+
+        if (!existingProject) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Project not found",
+          });
+        }
+
         await db.message.create({
           data: {
             content: input.value,
             role: MessageRole.USER,
             type: MessageType.RESULT,
-            projectId: input.projectId,
+            projectId: existingProject.id,
+            userId: ctx.auth.userId,
           },
         });
-        console.log("Hello 2");
 
         await inngest.send({
           name: "app/code.agent",
-          data: { value: input.value, projectId: input.projectId },
+          data: {
+            value: input.value,
+            projectId: input.projectId,
+            userId: ctx.auth.userId,
+          },
         });
 
         return "Message created";
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV === "development") {
+          console.error(error);
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong try again later",
+        });
       }
     }),
 });

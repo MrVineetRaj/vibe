@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Form, FormField } from "@/components/ui/form";
 import { useRouter } from "next/navigation";
 import { PROJECT_TEMPLATES } from "@/constants/project_templates";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { TRPCError } from "@trpc/server";
 
 interface Props {
   projectId: string;
@@ -30,6 +32,7 @@ const ProjectForm = () => {
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const { isSignedIn } = useUser();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -37,18 +40,28 @@ const ProjectForm = () => {
     },
   });
 
+  const clerk = useClerk();
+
   const createProject = useMutation(
     trpc.projects.create.mutationOptions({
       onSuccess: (data) => {
         router.push(`/projects/${data?.id}`);
       },
       onError: (err) => {
-        toast.error(err.message);
+        if (err instanceof TRPCError) {
+          if (err.data?.code === "UNAUTHORIZED") {
+            clerk.openSignIn();
+          }
+        }
       },
     })
   );
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
     await createProject.mutateAsync({
       value: values.value,
     });

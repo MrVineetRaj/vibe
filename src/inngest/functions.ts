@@ -50,10 +50,10 @@ export const generateCode = inngest.createFunction(
           handler: async ({ command }, { step }) => {
             const buffers = { stdout: "", stderr: "" };
             try {
-              const sandbox = await getSandbox(sandboxId);
               const result = await step?.run(
                 "Running Terminal Command",
                 async () => {
+                  const sandbox = await getSandbox(sandboxId);
                   return await sandbox.commands.run(command, {
                     onStdout: (data: string) => {
                       buffers.stdout += data;
@@ -64,6 +64,7 @@ export const generateCode = inngest.createFunction(
                   });
                 }
               );
+
               if (result) return result.stdout;
 
               return "Nothing here";
@@ -109,7 +110,7 @@ export const generateCode = inngest.createFunction(
               if (updatedFiles) {
                 network.state.data.files = updatedFiles;
               }
-              
+
               return "Files created/updated successfully";
             } catch (e) {
               return "Error: " + e;
@@ -212,11 +213,13 @@ export const generateCode = inngest.createFunction(
             role: MessageRole.ASSISTANT,
             type: MessageType.ERROR,
             projectId: event.data.projectId,
+            userId: event.data.userId,
           },
         });
       }
       return await db.message.create({
         data: {
+          userId: event.data.userId,
           content: result.state.data.summary,
           role: MessageRole.ASSISTANT,
           type: MessageType.RESULT,
