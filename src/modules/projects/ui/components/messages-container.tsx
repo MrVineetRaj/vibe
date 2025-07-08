@@ -18,6 +18,7 @@ const MessagesContainer = ({
   setActiveFragment,
 }: Props) => {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastAssistantMessageRef = useRef<string | null>(null);
   const trpc = useTRPC();
 
   const { data: messages } = useSuspenseQuery(
@@ -36,8 +37,12 @@ const MessagesContainer = ({
       (message) => message.role === MessageRole.ASSISTANT
     );
 
-    if (lastAssistantMessage) {
+    if (
+      lastAssistantMessage?.fragment &&
+      lastAssistantMessage.id !== lastAssistantMessageRef.current
+    ) {
       setActiveFragment(lastAssistantMessage.fragment);
+      lastAssistantMessageRef.current = lastAssistantMessage.id;
     }
   }, [messages]);
 
