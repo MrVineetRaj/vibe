@@ -11,6 +11,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import MessagesContainer from "../components/messages-container";
 import { Fragment } from "@/generated/prisma";
 import ProjectHeader from "../components/project-header";
+import FragmentWeb from "../components/fragment-web";
 
 interface Props {
   projectId: string;
@@ -44,8 +45,7 @@ const ProjectView = ({ projectId }: Props) => {
           minSize={50}
           className="flex flex-col min-h-0"
         >
-          {/* {JSON.stringify(project)} */}
-          TODO : Preview
+          {activeFragment && <FragmentWeb data={activeFragment}/>}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
