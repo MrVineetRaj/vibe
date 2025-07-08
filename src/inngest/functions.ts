@@ -5,11 +5,19 @@ import {
   createNetwork,
   createTool,
   openai,
+  type Tool,
 } from "@inngest/agent-kit";
 import { Sandbox } from "@e2b/code-interpreter";
 import { getSandbox, lastAssistantTextMessageContent } from "./uitls";
 import { PROMPT } from "@/constants/prompt";
-
+import { db } from "@/lib/prisma";
+import { MessageRole, MessageType } from "@/generated/prisma";
+interface AgentState {
+  summary: string;
+  files: {
+    [path: string]: string;
+  };
+}
 export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
@@ -21,7 +29,7 @@ export const generateCode = inngest.createFunction(
 
     // Create a new agent with a system prompt (you can add optional tools, too)
     // const result = await step.run("generating-code", async () => {
-    const codeAgent = createAgent({
+    const codeAgent = createAgent<AgentState>({
       name: "code-agent",
       description:
         "a senior software engineer working in a sandboxed Next.js 15.3.4 environment",
@@ -40,27 +48,31 @@ export const generateCode = inngest.createFunction(
             command: z.string(),
           }),
           handler: async ({ command }, { step }) => {
-            // return await step?.run("terminal", async () => {
             const buffers = { stdout: "", stderr: "" };
             try {
               const sandbox = await getSandbox(sandboxId);
-              const result = await sandbox.commands.run(command, {
-                onStdout: (data: string) => {
-                  buffers.stdout += data;
-                },
-                onStderr: (data: string) => {
-                  buffers.stderr += data;
-                },
-              });
+              const result = await step?.run(
+                "Running Terminal Command",
+                async () => {
+                  return await sandbox.commands.run(command, {
+                    onStdout: (data: string) => {
+                      buffers.stdout += data;
+                    },
+                    onStderr: (data: string) => {
+                      buffers.stderr += data;
+                    },
+                  });
+                }
+              );
+              if (result) return result.stdout;
 
-              return result.stdout;
+              return "Nothing here";
             } catch (err) {
               console.error(
                 `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`
               );
               return `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`;
             }
-            // });
           },
         }),
         createTool({
@@ -74,31 +86,34 @@ export const generateCode = inngest.createFunction(
               })
             ),
           }),
-          handler: async ({ files }, { network }) => {
-            // console.log("CMD is ", cmd);
-            // const { step, network } = cmd;
-            // const newFiles = await step?.run(
-            //   "creating-or-updating-files",
-            //   async () => {
+          handler: async (
+            { files },
+            { network, step }: Tool.Options<AgentState>
+          ) => {
             try {
-              const updatedFiles = network.state.data.files || {};
-              console.log("Running createOrUpdateFiles");
-              const sandbox = await getSandbox(sandboxId);
-              for (const file of files) {
-                await sandbox.files.write(file.path, file.content);
-                updatedFiles[file.path] = file.content;
-              }
-              // ADD THIS RETURN STATEMENT
+              const updatedFiles = await step?.run(
+                "Writing Files",
+                async () => {
+                  const updatedFiles = network.state.data.files || {};
 
-              if (typeof updatedFiles === "object") {
+                  const sandbox = await getSandbox(sandboxId);
+                  for (const file of files) {
+                    await sandbox.files.write(file.path, file.content);
+                    updatedFiles[file.path] = file.content;
+                  }
+
+                  return updatedFiles;
+                }
+              );
+
+              if (updatedFiles) {
                 network.state.data.files = updatedFiles;
               }
-              return updatedFiles;
+              
+              return "Files created/updated successfully";
             } catch (e) {
-              return "Error" + e;
+              return "Error: " + e;
             }
-            //   }
-            // );
           },
         }),
         createTool({
@@ -108,21 +123,20 @@ export const generateCode = inngest.createFunction(
             files: z.array(z.string()),
           }),
           handler: async ({ files }, { step }) => {
-            // return await step?.run("reading files", async () => {
             try {
-              const sandbox = await getSandbox(sandboxId);
-              console.log("Running readFiles");
-              let contents = [];
-              for (const file of files) {
-                const content = await sandbox.files.read(file);
-                contents.push({ path: file, content });
-              }
-
-              return JSON.stringify(contents);
+              await step?.run("Reading Files", async () => {
+                const sandbox = await getSandbox(sandboxId);
+                console.log("Running readFiles");
+                let contents = [];
+                for (const file of files) {
+                  const content = await sandbox.files.read(file);
+                  contents.push({ path: file, content });
+                }
+                return JSON.stringify(contents);
+              });
             } catch (err) {
               return "Error: " + err;
             }
-            // });
           },
         }),
       ],
@@ -150,7 +164,7 @@ export const generateCode = inngest.createFunction(
 
     console.log("CodeAgentCompleted");
 
-    const network = createNetwork({
+    const network = createNetwork<AgentState>({
       name: "coding-agent-network",
       agents: [codeAgent],
       maxIter: 15,
@@ -159,7 +173,7 @@ export const generateCode = inngest.createFunction(
 
         if (summary) {
           console.log("Summary found, stopping network");
-          return; // This stops the network
+          return;
         }
 
         return codeAgent;
@@ -168,14 +182,19 @@ export const generateCode = inngest.createFunction(
 
     console.log("Starting network with input:", event.data.value);
 
-    const result = await step.run("run-network", async () => {
-      return await network.run(event.data.value);
-    });
+    // const result = await step.run("run-network", async () => {
+    const result = await network.run(event.data.value);
+    // });
+
+    const isError =
+      !result.state.data.summary ||
+      Object.keys(result.state.data.files || {}).length === 0;
 
     console.log("Network completed with result:", {
       hasFiles: !!result.state?.data?.files,
       hasSummary: !!result.state?.data?.summary,
     });
+
     // return result;
     // });
 
@@ -185,6 +204,33 @@ export const generateCode = inngest.createFunction(
       return `https://${host}`;
     });
 
+    await step.run("Saving Results", async () => {
+      if (isError) {
+        return await db.message.create({
+          data: {
+            content: "Something went wrong please try again later",
+            role: MessageRole.ASSISTANT,
+            type: MessageType.ERROR,
+            projectId: event.data.projectId,
+          },
+        });
+      }
+      return await db.message.create({
+        data: {
+          content: result.state.data.summary,
+          role: MessageRole.ASSISTANT,
+          type: MessageType.RESULT,
+          projectId: event.data.projectId,
+          fragment: {
+            create: {
+              sandboxUrl: sandboxURL,
+              title: "Fragment",
+              files: result.state.data.files,
+            },
+          },
+        },
+      });
+    });
     return {
       url: sandboxURL,
       title: "Fragment",
