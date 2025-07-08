@@ -2,36 +2,66 @@ import { z } from "zod";
 
 import { MessageRole, MessageType } from "@/generated/prisma";
 import { db } from "@/lib/prisma";
-import { baseProcedure, createTRPCRouter } from "@/trpc/init";
+import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { inngest } from "@/inngest/client";
 import { generateSlug } from "random-word-slugs";
+import { TRPCError } from "@trpc/server";
+import { consumeCredits } from "@/lib/usage";
 
 export const projectsRouter = createTRPCRouter({
-  getOne: baseProcedure
+  getOne: protectedProcedure
     .input(
       z.object({
         projectId: z.string().min(1, "Project Id is required"),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      // try {
       const project = await db.project.findUnique({
         where: {
           id: input.projectId,
+          userId: ctx.auth.userId,
         },
       });
 
-      return project;
-    }),
-  getMany: baseProcedure.query(async () => {
-    const projects = await db.project.findMany({
-      orderBy: {
-        updatedAt: "asc",
-      },
-    });
+      if (!project) {
+        return null;
+      }
 
-    return projects;
+      return project;
+      // } catch (error) {
+      //   if (process.env.NODE_ENV === "development") {
+      //     console.log(error);
+      //   }
+      //   throw new TRPCError({
+      //     code: "INTERNAL_SERVER_ERROR",
+      //     message: "Something went wrong try again later",
+      //   });
+      // }
+    }),
+  getMany: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const projects = await db.project.findMany({
+        where: {
+          userId: ctx.auth.userId,
+        },
+        orderBy: {
+          updatedAt: "asc",
+        },
+      });
+
+      return projects;
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(error);
+      }
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong try again later",
+      });
+    }
   }),
-  create: baseProcedure
+  create: protectedProcedure
     .input(
       z.object({
         value: z
@@ -40,34 +70,44 @@ export const projectsRouter = createTRPCRouter({
           .max(10000, { message: "Prompt is too long" }),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        // console.log(db);
+        await consumeCredits();
         const createdProject = await db.project.create({
           data: {
             name: generateSlug(2, {
               format: "kebab",
             }),
+            userId: ctx.auth.userId,
             messages: {
               create: {
                 content: input.value,
                 role: MessageRole.USER,
                 type: MessageType.RESULT,
+                userId: ctx.auth.userId,
               },
             },
           },
         });
 
-        console.log("Hello 2");
-
         await inngest.send({
           name: "app/code.agent",
-          data: { value: input.value, projectId: createdProject.id },
+          data: {
+            value: input.value,
+            projectId: createdProject.id,
+            userId: ctx.auth.userId,
+          },
         });
 
         return { id: createdProject.id };
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV === "development") {
+          console.log(error);
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong try again later",
+        });
       }
     }),
 });

@@ -3,21 +3,33 @@ import { inngest } from "./client";
 import {
   createAgent,
   createNetwork,
+  createState,
   createTool,
+  type Message,
   openai,
   type Tool,
 } from "@inngest/agent-kit";
 import { Sandbox } from "@e2b/code-interpreter";
-import { getSandbox, lastAssistantTextMessageContent } from "./uitls";
-import { PROMPT } from "@/constants/prompt";
+import {
+  getSandbox,
+  lastAssistantTextMessageContent,
+  parseAgentOutput,
+} from "./uitls";
+import {
+  FRAGMENT_TITLE_PROMPT,
+  PROMPT,
+  RESPONSE_PROMPT,
+} from "@/constants/prompt";
 import { db } from "@/lib/prisma";
 import { MessageRole, MessageType } from "@/generated/prisma";
+import { timeStamp } from "node:console";
 interface AgentState {
   summary: string;
   files: {
     [path: string]: string;
   };
 }
+
 export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
@@ -27,6 +39,67 @@ export const generateCode = inngest.createFunction(
       return sandbox.sandboxId;
     });
 
+    const previousMessages = await step.run(
+      "get-previous-message",
+      async () => {
+        const formattedMessage: Message[] = [];
+
+        const messages = await db.message.findMany({
+          where: {
+            projectId: event.data.projectId,
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        });
+
+        for (const message of messages) {
+          formattedMessage.push({
+            type: "text",
+            role: message.role === MessageRole.ASSISTANT ? "assistant" : "user",
+            content: JSON.stringify({
+              content: message.content,
+              timeStamp: message.createdAt,
+            }),
+          });
+        }
+
+        const mostRecentFragment = await db.fragment.findFirst({
+          where: {
+            message: {
+              projectId: event.data.projectId,
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          include: {
+            message: true,
+          },
+        });
+
+        formattedMessage.unshift({
+          type: "text",
+          role: "user",
+          content: JSON.stringify({
+            label: "Final File Edits",
+            files: mostRecentFragment?.files,
+          }),
+        });
+
+        return formattedMessage;
+      }
+    );
+
+    const state = createState<AgentState>(
+      {
+        summary: "",
+        files: {},
+      },
+      {
+        messages: previousMessages,
+      }
+    );
     // Create a new agent with a system prompt (you can add optional tools, too)
     // const result = await step.run("generating-code", async () => {
     const codeAgent = createAgent<AgentState>({
@@ -50,10 +123,10 @@ export const generateCode = inngest.createFunction(
           handler: async ({ command }, { step }) => {
             const buffers = { stdout: "", stderr: "" };
             try {
-              const sandbox = await getSandbox(sandboxId);
               const result = await step?.run(
                 "Running Terminal Command",
                 async () => {
+                  const sandbox = await getSandbox(sandboxId);
                   return await sandbox.commands.run(command, {
                     onStdout: (data: string) => {
                       buffers.stdout += data;
@@ -64,11 +137,12 @@ export const generateCode = inngest.createFunction(
                   });
                 }
               );
+
               if (result) return result.stdout;
 
               return "Nothing here";
             } catch (err) {
-              console.error(
+              console.log(
                 `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`
               );
               return `Command failed: ${err} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`;
@@ -109,7 +183,7 @@ export const generateCode = inngest.createFunction(
               if (updatedFiles) {
                 network.state.data.files = updatedFiles;
               }
-              
+
               return "Files created/updated successfully";
             } catch (e) {
               return "Error: " + e;
@@ -168,6 +242,7 @@ export const generateCode = inngest.createFunction(
       name: "coding-agent-network",
       agents: [codeAgent],
       maxIter: 15,
+      defaultState: state,
       router: async ({ network }) => {
         const summary = network.state.data.summary;
 
@@ -180,11 +255,33 @@ export const generateCode = inngest.createFunction(
       },
     });
 
-    console.log("Starting network with input:", event.data.value);
-
     // const result = await step.run("run-network", async () => {
-    const result = await network.run(event.data.value);
+    const result = await network.run(event.data.value, { state });
+
+    const fragmentTitleGenerator = createAgent({
+      name: "fragment-title-generator",
+      description: "A fragment title generator",
+      system: FRAGMENT_TITLE_PROMPT,
+      model: openai({
+        model: "gpt-4.1-mini",
+      }),
+    });
+    const responseGenerator = createAgent({
+      name: "response-generator",
+      description: "A response generator",
+      system: RESPONSE_PROMPT,
+      model: openai({
+        model: "gpt-4.1-mini",
+      }),
+    });
     // });
+
+    const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(
+      result.state.data.summary
+    );
+    const { output: responseOutput } = await responseGenerator.run(
+      result.state.data.summary
+    );
 
     const isError =
       !result.state.data.summary ||
@@ -212,19 +309,21 @@ export const generateCode = inngest.createFunction(
             role: MessageRole.ASSISTANT,
             type: MessageType.ERROR,
             projectId: event.data.projectId,
+            userId: event.data.userId,
           },
         });
       }
       return await db.message.create({
         data: {
-          content: result.state.data.summary,
+          userId: event.data.userId,
+          content: parseAgentOutput(responseOutput),
           role: MessageRole.ASSISTANT,
           type: MessageType.RESULT,
           projectId: event.data.projectId,
           fragment: {
             create: {
               sandboxUrl: sandboxURL,
-              title: "Fragment",
+              title: parseAgentOutput(fragmentTitleOutput),
               files: result.state.data.files,
             },
           },
