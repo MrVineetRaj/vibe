@@ -73,6 +73,8 @@ export const projectsRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       try {
         await consumeCredits();
+        const { has } = ctx.auth;
+        const isOneProPlan = has?.({ plan: "pro" });
         const createdProject = await db.project.create({
           data: {
             name: generateSlug(2, {
@@ -96,6 +98,7 @@ export const projectsRouter = createTRPCRouter({
             value: input.value,
             projectId: createdProject.id,
             userId: ctx.auth.userId,
+            plan: isOneProPlan ? "pro" : "free_user",
           },
         });
 

@@ -58,6 +58,9 @@ export const messageRouter = createTRPCRouter({
             userId: ctx.auth.userId,
           },
         });
+        const { has } = ctx.auth;
+
+        const isOneProPlan = has?.({ plan: "pro" });
 
         if (!existingProject) {
           throw new TRPCError({
@@ -84,6 +87,7 @@ export const messageRouter = createTRPCRouter({
             value: input.value,
             projectId: input.projectId,
             userId: ctx.auth.userId,
+            plan: isOneProPlan ? "pro" : "free_user",
           },
         });
 
