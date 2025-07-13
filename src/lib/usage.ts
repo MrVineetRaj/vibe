@@ -3,8 +3,8 @@ import { RateLimiterPrisma } from "rate-limiter-flexible";
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
-const FREE_POINTS = 10;
-const PRO_POINTS = 100;
+const FREE_POINTS = 5;
+const PRO_POINTS = 10;
 const DURATION = 30 * 24 * 60 * 60;
 export const MESSAGE_REQUEST_COST = 1;
 
