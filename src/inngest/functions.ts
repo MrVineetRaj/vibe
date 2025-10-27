@@ -38,9 +38,7 @@ export const generateCode = inngest.createFunction(
     // console.log("IS user on pro plan");
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("vibe-sandbox-test-2");
-      await sandbox.setTimeout(
-        currentPlan === "pro" ? 1000 * 60 * 10 : 1000 * 60 * 5
-      );
+      await sandbox.setTimeout(1000 * 60 * 60);
       return sandbox.sandboxId;
     });
 

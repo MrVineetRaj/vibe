@@ -44,3 +44,5 @@ next-env.d.ts
 
 .vscode
 e2b.toml
+# clerk configuration (can include secrets)
+/.clerk/
