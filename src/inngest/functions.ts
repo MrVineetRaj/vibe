@@ -53,7 +53,7 @@ export const generateCode = inngest.createFunction(
           orderBy: {
             createdAt: "desc",
           },
-          take: 15,
+          take: 10,
         });
 
         for (const message of messages) {

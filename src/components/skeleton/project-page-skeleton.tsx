@@ -8,9 +8,6 @@ import { Skeleton } from "../ui/skeleton";
 import { MessageSkeleton } from "./message-skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@radix-ui/react-tabs";
 import { CodeIcon, EyeIcon } from "lucide-react";
-import { CreditsInNavbar } from "@/modules/projects/ui/components/usage";
-import { SignedIn } from "@clerk/nextjs";
-import UserControl from "../user-control";
 
 export const ProjectPageSkeleton = () => {
   return (
