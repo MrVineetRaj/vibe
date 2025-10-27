@@ -15,7 +15,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { CodeIcon, CrownIcon, EyeIcon } from "lucide-react";
+import { CodeIcon, CrownIcon, EyeIcon, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -23,6 +23,8 @@ import FileExplorer from "@/components/file-explorer";
 import UserControl from "@/components/user-control";
 import { SignedIn, useAuth } from "@clerk/nextjs";
 import { CreditsInNavbar } from "../components/usage";
+import { MessageSkeleton } from "@/components/skeleton/message-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   projectId: string;
@@ -34,7 +36,7 @@ const ProjectView = ({ projectId }: Props) => {
 
   const isOnFreePlan = has?.({ plan: "free_user" });
   const [activeFragment, setActiveFragment] = useState<Fragment | null>(null);
-  const [tabState, setTabState] = useState<"preview" | "code">("preview");
+  const [tabState, setTabState] = useState<"preview" | "code">("code");
 
   const { data: project } = useSuspenseQuery(
     trpc.projects.getOne.queryOptions({
@@ -51,10 +53,10 @@ const ProjectView = ({ projectId }: Props) => {
             minSize={20}
             className="flex flex-col min-h-0"
           >
-            <Suspense fallback={<p>Loading Project Header...</p>}>
+            <Suspense fallback={<Skeleton className="w-32 h-6" />}>
               <ProjectHeader projectId={projectId} />
             </Suspense>
-            <Suspense fallback={<p>Loading Messages...</p>}>
+            <Suspense fallback={<MessageSkeleton />}>
               <MessagesContainer
                 projectId={projectId}
                 activeFragment={activeFragment}
@@ -72,13 +74,19 @@ const ProjectView = ({ projectId }: Props) => {
               className="h-full gap-y-0"
               defaultValue={"preview"}
               value={tabState}
-              onValueChange={(value) =>
-                setTabState(value as "preview" | "code")
-              }
+              onValueChange={(value) => {
+                const isPreviewReady = !!activeFragment;
+                if (!isPreviewReady && value === "preview") return;
+                setTabState(value as "preview" | "code");
+              }}
             >
               <div className="w-full flex items-center p-2 border-b gap-x-2">
                 <TabsList className="h-8 p-0 border rounded-md">
-                  <TabsTrigger value="preview" className="rounded-md">
+                  <TabsTrigger
+                    value="preview"
+                    className="rounded-md"
+                    disabled={!!activeFragment === false}
+                  >
                     <EyeIcon />
                     <span>Demo</span>
                   </TabsTrigger>
@@ -98,18 +106,37 @@ const ProjectView = ({ projectId }: Props) => {
                     </Button>
                   )}
                   <SignedIn>
-                    <UserControl  />
+                    <UserControl />
                   </SignedIn>
                 </div>
               </div>
-              <TabsContent value="preview">
-                {!!activeFragment && <FragmentWeb data={activeFragment} />}
-              </TabsContent>
+
               <TabsContent value="code" className="min-h-0">
-                {!!activeFragment?.files && (
+                {!!activeFragment?.files ? (
                   <FileExplorer
                     files={activeFragment?.files as { [path: string]: string }}
                   />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <Loader className="size-32 animate-spin" />
+                    <p className="h-xl font-bold italic animate-pulse">
+                      {" "}
+                      Generating/loading source code
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="preview">
+                {!!activeFragment ? (
+                  <FragmentWeb data={activeFragment} />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <Loader className="size-32 animate-spin" />
+                    <p className="h-xl font-bold italic animate-pulse">
+                      {" "}
+                      Generating/loading {"NextJs "}App
+                    </p>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>
