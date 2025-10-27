@@ -7,6 +7,7 @@ import { inngest } from "@/inngest/client";
 import { generateSlug } from "random-word-slugs";
 import { TRPCError } from "@trpc/server";
 import { consumeCredits } from "@/lib/usage";
+import { OpenAI } from "openai";
 
 export const projectsRouter = createTRPCRouter({
   getOne: protectedProcedure
@@ -75,11 +76,29 @@ export const projectsRouter = createTRPCRouter({
         await consumeCredits();
         const { has } = ctx.auth;
         const isOneProPlan = has?.({ plan: "pro" });
+        const client = new OpenAI();
+        const projectName = await client.chat.completions.create({
+          model: "gpt-4.1-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Based on user input generate a project title if user gave a title then just return that title, title could be of max 2 words so just give me the generated title no other text please ",
+            },
+            {
+              role: "user",
+              content: `user wants to generate a project with description ${input.value}`,
+            },
+          ],
+        });
+
         const createdProject = await db.project.create({
           data: {
-            name: generateSlug(2, {
-              format: "kebab",
-            }),
+            name:
+              (projectName.choices[0].message.content as string) ??
+              generateSlug(2, {
+                format: "kebab",
+              }),
             userId: ctx.auth.userId,
             messages: {
               create: {
