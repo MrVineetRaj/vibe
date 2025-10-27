@@ -34,7 +34,6 @@ export const generateCode = inngest.createFunction(
   { id: "code-agent" },
   { event: "app/code.agent" },
   async ({ event, step }) => {
-    const currentPlan = event.data.plan;
     // console.log("IS user on pro plan");
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("vibe-sandbox-test-2");
