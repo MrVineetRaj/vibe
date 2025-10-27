@@ -18,6 +18,7 @@ Build apps and websites by vibing with AI. Vibe is a powerful Next.js applicatio
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js 15.3.4** - React framework with App Router
 - **React 18** - UI library
 - **TypeScript** - Type safety
@@ -27,30 +28,35 @@ Build apps and websites by vibing with AI. Vibe is a powerful Next.js applicatio
 - **next-themes** - Theme management
 
 ### Backend & Database
+
 - **tRPC** - Type-safe APIs
 - **Prisma** - Database ORM
 - **PostgreSQL** - Database
 - **Zod** - Schema validation
 
 ### AI & Code Generation
+
 - **Inngest** - Background job processing
-- **OpenAI GPT-4** - Primary AI model
+- **OpenAI GPT-4.1** - Primary AI model
 - **Google Gemini** - Secondary AI model
 - **@inngest/agent-kit** - Multi-agent orchestration
 - **E2B Code Interpreter** - Sandboxed code execution
 
 ### Authentication & Payments
+
 - **Clerk** - Authentication
-- **Stripe** (implied from pricing mentions) - Payment processing
+- **Clerk Billing** - Payment processing
 
 ### Development & Deployment
+
 - **Docker** - Containerization
 - **E2B Sandboxes** - Isolated execution environments
-- **Vercel** (likely) - Deployment platform
+- **Vercel** Deployment platform
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - Docker
 - PostgreSQL database
@@ -58,17 +64,20 @@ Build apps and websites by vibing with AI. Vibe is a powerful Next.js applicatio
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd vibe
 ```
 
 2. **Install dependencies**
+
 ```bash
 npm install
 ```
 
 3. **Set up the database**
+
 ```bash
 # Start PostgreSQL with Docker
 docker run -d --name postgres-db -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=12345678 -p 5432:5432 postgres
@@ -79,7 +88,8 @@ npx prisma db push
 ```
 
 4. **Environment Variables**
-Create a `.env.local` file with:
+   Create a `.env.local` file with:
+
 ```env
 # Database
 DATABASE_URL="postgresql://admin:12345678@localhost:5432/vibe"
@@ -90,10 +100,7 @@ CLERK_SECRET_KEY=your_clerk_secret_key
 
 # OpenAI
 OPENAI_API_KEY=your_openai_api_key
-
-# Inngest
-INNGEST_EVENT_KEY=your_inngest_event_key
-INNGEST_SIGNING_KEY=your_inngest_signing_key
+GEMINI_API_KEY=your_gemini_api_key
 
 # E2B
 E2B_API_KEY=your_e2b_api_key
@@ -102,11 +109,21 @@ E2B_API_KEY=your_e2b_api_key
 ```
 
 5. **Run the development server**
+
+For Inngets dev server
+
+```bash
+npx inngest-cli@latest dev
+```
+
+For Project
+
 ```bash
 npm run dev
 ```
 
 6. **Start Inngest dev server** (in a separate terminal)
+
 ```bash
 npx inngest-cli@latest dev
 ```
@@ -135,19 +152,24 @@ src/
 ## 🎯 Key Features Explained
 
 ### AI Code Generation
+
 The platform uses a sophisticated multi-agent system:
+
 - **Code Agent**: Generates application code using GPT-4
 - **Response Agent**: Creates user-friendly summaries
 - **Title Agent**: Generates descriptive titles for code fragments
 
 ### Sandbox Environment
+
 - Isolated Next.js 15.3.4 environments
 - Pre-installed Shadcn/UI components
 - Configurable timeouts (5 min free, 10 min pro)
 - Real-time code execution and preview
 
 ### Project Templates
+
 Pre-built templates include:
+
 - Netflix clone
 - Admin dashboard
 - Kanban board
@@ -160,6 +182,7 @@ Pre-built templates include:
 ## 🔧 Development
 
 ### Key Commands
+
 ```bash
 npm run dev         # Start development server
 npm run build       # Build for production
@@ -170,7 +193,9 @@ npx prisma generate # Generate Prisma client
 ```
 
 ### Database Schema
+
 The application uses Prisma with PostgreSQL. Key entities:
+
 - **User**: User accounts and authentication
 - **Project**: Generated projects
 - **Message**: Chat messages and prompts
@@ -179,8 +204,8 @@ The application uses Prisma with PostgreSQL. Key entities:
 ## 🔐 Environment Setup
 
 Ensure you have accounts and API keys for:
+
 - [Clerk](https://clerk.dev) - Authentication
 - [OpenAI](https://openai.com) - AI models
 - [E2B](https://e2b.dev) - Code sandboxes
 - [Inngest](https://inngest.com) - Background jobs
-
